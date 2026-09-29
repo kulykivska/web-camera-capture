@@ -9,7 +9,7 @@ Capture frames from the device camera in the browser without running Safari and 
 - Clean start and stop: every track stopped, the video detached, blob URLs revoked, and no race when `start()` and `stop()` overlap.
 
 ```sh
-npm install web-camera-capture   # not published yet; install from GitHub for now
+npm install github:kulykivska/web-camera-capture
 ```
 
 ## Usage
