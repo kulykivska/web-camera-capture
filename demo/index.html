@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>web-camera-capture demo</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0 auto; max-width: 720px; padding: 16px; }
+    video, img { width: 100%; background: #000; border-radius: 8px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    button, select, input { font: inherit; padding: 6px 10px; }
+    #log { font: 13px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>web-camera-capture</h1>
+  <p>Build first (<code>npm run build</code>), then serve the repo root over HTTPS or localhost,
+    for example <code>python3 -m http.server</code>, and open <code>/demo/</code>.</p>
+
+  <video id="preview" playsinline muted autoplay></video>
+
+  <div class="row">
+    <button id="front">Front</button>
+    <button id="back">Back</button>
+    <select id="devices"><option value="">Pick a camera</option></select>
+    <button id="stop">Stop</button>
+  </div>
+
+  <div class="row">
+    <button id="shot">Capture</button>
+    <label>Frames <input id="count" type="number" value="300" min="1" style="width:6em"></label>
+    <button id="burst">Burst (library)</button>
+    <button id="naive">Burst (new canvas per frame)</button>
+  </div>
+
+  <img id="last" alt="Last captured frame">
+  <div id="log"></div>
+
+  <script type="module">
+    import { WebCamera, listCameras, closeBitmap } from '../dist/index.js';
+
+    const $ = (id) => document.getElementById(id);
+    const log = (msg) => { $('log').textContent = msg + '\n' + $('log').textContent; };
+    const cam = new WebCamera({ video: $('preview'), width: 1920, height: 1080, onEnded: () => log('camera ended') });
+    let lastURL = null;
+
+    function show(blob) {
+      // Revoke the previous preview URL, or every shown frame stays in memory.
+      if (lastURL) URL.revokeObjectURL(lastURL);
+      lastURL = URL.createObjectURL(blob);
+      $('last').src = lastURL;
+    }
+
+    async function start(selection) {
+      try {
+        await cam.start(selection);
+        const s = cam.settings;
+        log(`live: ${s?.width}x${s?.height} ${s?.facingMode ?? ''}`);
+        const cams = await listCameras();
+        $('devices').innerHTML = '<option value="">Pick a camera</option>' +
+          cams.map((c) => `<option value="${c.deviceId}">${c.label || c.deviceId}</option>`).join('');
+      } catch (e) {
+        log(`${e.code ?? 'error'}: ${e.message}`);
+      }
+    }
+
+    $('front').onclick = () => start({ facing: 'user', deviceId: undefined });
+    $('back').onclick = () => start({ facing: 'environment', deviceId: undefined });
+    $('devices').onchange = (e) => e.target.value && start({ deviceId: e.target.value });
+    $('stop').onclick = () => { cam.stop(); log('stopped'); };
+
+    $('shot').onclick = async () => {
+      const { blob, width, height } = await cam.captureBlob({ skipBlankFrames: true });
+      show(blob);
+      log(`frame ${width}x${height}, ${(blob.size / 1024).toFixed(0)} KB`);
+    };
+
+    $('burst').onclick = async () => {
+      const n = +$('count').value;
+      const t0 = performance.now();
+      for (let i = 0; i < n; i++) {
+        const bmp = await cam.captureBitmap();
+        closeBitmap(bmp);
+      }
+      log(`library: ${n} frames in ${(performance.now() - t0).toFixed(0)} ms, one canvas`);
+    };
+
+    // The pattern the library replaces. On affected iOS versions this
+    // eventually fails with "Total canvas memory use exceeds the maximum limit".
+    $('naive').onclick = async () => {
+      const n = +$('count').value;
+      const v = $('preview');
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('canvas');
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        const ctx = c.getContext('2d');
+        if (!ctx) { log(`naive: getContext returned null at frame ${i}`); return; }
+        ctx.drawImage(v, 0, 0);
+        await createImageBitmap(c);
+      }
+      log(`naive: ${n} frames done without hitting the limit on this browser`);
+    };
+  </script>
+</body>
+</html>
