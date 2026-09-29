@@ -1,0 +1,51 @@
+{
+  "name": "web-camera-capture",
+  "version": "0.1.0",
+  "description": "Capture frames from the browser camera without leaking canvas memory in Safari and iOS WebKit.",
+  "license": "MIT",
+  "author": "Yuliia Kulykivska",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kulykivska/web-camera-capture.git"
+  },
+  "keywords": [
+    "camera",
+    "getUserMedia",
+    "webcam",
+    "canvas",
+    "safari",
+    "ios",
+    "memory-leak",
+    "imagecapture",
+    "frame-capture"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
