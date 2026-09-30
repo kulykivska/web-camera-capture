@@ -58,8 +58,9 @@
         const s = cam.settings;
         log(`live: ${s?.width}x${s?.height} ${s?.facingMode ?? ''}`);
         const cams = await listCameras();
-        $('devices').innerHTML = '<option value="">Pick a camera</option>' +
-          cams.map((c) => `<option value="${c.deviceId}">${c.label || c.deviceId}</option>`).join('');
+        // Device labels come from the OS, so build options as text, not HTML.
+        $('devices').replaceChildren(new Option('Pick a camera', ''),
+          ...cams.map((c) => new Option(c.label || c.deviceId, c.deviceId)));
       } catch (e) {
         log(`${e.code ?? 'error'}: ${e.message}`);
       }
